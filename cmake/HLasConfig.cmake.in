@@ -1,0 +1,16 @@
+@PACKAGE_INIT@
+
+# Beroendena följer med målen: Threads för dem och manager, och libcurl bara
+# om paketet byggdes med nätstöd.
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+if(@HLAS_ENABLE_NET@)
+    find_dependency(CURL)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/HLasTargets.cmake")
+
+set(HLas_HAVE_LAZ @HLAS_ENABLE_LAZ@)
+set(HLas_HAVE_NET @HLAS_ENABLE_NET@)
+
+check_required_components(HLas)

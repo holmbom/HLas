@@ -60,12 +60,30 @@ FetchContent_Declare(HLas
     GIT_TAG        main)   # or a release tag, e.g. vX.Y.Z
 FetchContent_MakeAvailable(HLas)
 
-target_link_libraries(myapp PRIVATE HLas)
+target_link_libraries(myapp PRIVATE HLas::HLas)
 ```
 
 Only the library is built in your project; the tests, benchmarks and tools are
-not. `HLas` links everything. A program that only reads points can link
+not. `HLas::HLas` links everything. A program that only reads points can link
 `HLas::core` alone, which pulls in neither the DEM nor the cache.
+
+### Prebuilt libraries
+
+Every release has prebuilt Release libraries for Windows (MSVC and MinGW) and
+Linux (GCC), so the library does not have to be compiled in your project. Unpack
+one and point CMake at it:
+
+```cmake
+find_package(HLas 1 CONFIG REQUIRED)   # -DCMAKE_PREFIX_PATH=path/to/HLas-vX.Y.Z-…
+target_link_libraries(myapp PRIVATE HLas::HLas)
+```
+
+Pick the package for your compiler: static C++ libraries cannot be mixed between
+MSVC, MinGW and GCC. The MinGW and Linux packages also come as `-net` variants
+with HTTP range requests; those need the same libcurl in your build
+(`mingw-w64-ucrt-x86_64-curl` in MSYS2, `libcurl4-openssl-dev` on Debian/Ubuntu).
+All packages are Release builds. A Debug build of your app on MSVC, or network
+support with MSVC, needs the source instead.
 
 ## Building
 

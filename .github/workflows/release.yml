@@ -1,0 +1,157 @@
+# Bygger HLas i Release-läge och lägger färdiga bibliotek på releasen: ett paket
+# per verktygskedja, eftersom statiska C++-bibliotek inte går att blanda mellan
+# MSVC, MinGW och GCC. Varje paket är en `cmake --install`, alltså biblioteken,
+# HLas.h och CMake-paketet för find_package(HLas), plus licens och README.
+#
+# Körs när en tagg vX.Y.Z pushas, eller för hand (Actions → Release → Run
+# workflow) för en tagg som redan finns. MinGW och Linux finns också som
+# `-net`-paket med nätstödet; MSVC-paketet saknar det, eftersom det inte finns
+# något libcurl att bygga mot där.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Taggen som ska byggas (t.ex. v1.1.6)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  CONFIGURE: -G Ninja -DCMAKE_BUILD_TYPE=Release -DHLAS_BUILD_TESTS=OFF -DHLAS_INSTALL=ON
+
+jobs:
+  # Releasen skapas EN gång, innan byggena. Tre jobb som var för sig försöker
+  # skapa den kan krocka; de här laddar bara upp till en release som finns.
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skapa releasen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1 ||
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "HLas $TAG" --generate-notes
+
+  windows-msvc:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Bygg
+        shell: bash
+        run: |
+          cmake -S . -B build $CONFIGURE -DCMAKE_CXX_COMPILER=cl
+          cmake --build build
+          cmake --install build --prefix "HLas-${TAG}-windows-msvc-x64"
+
+      - name: Packa
+        shell: bash
+        run: |
+          pkg="HLas-${TAG}-windows-msvc-x64"
+          cp LICENSE THIRD_PARTY_NOTICES.md README.md README.sv.md "$pkg/"
+          7z a -tzip "$pkg.zip" "$pkg" > /dev/null
+          echo "PKG=$pkg.zip" >> "$GITHUB_ENV"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          files: ${{ env.PKG }}
+
+  # Två varianter: utan nät, och `-net` med HLAS_ENABLE_NET mot MSYS2:s libcurl.
+  # Den som använder -net-paketet behöver samma libcurl (pacman-paketet nedan).
+  windows-mingw:
+    needs: release
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - net: OFF
+            suffix: ''
+          - net: ON
+            suffix: '-net'
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            zip
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-curl
+
+      - name: Bygg
+        run: |
+          pkg="HLas-${TAG}-windows-mingw-x64${{ matrix.suffix }}"
+          cmake -S . -B build $CONFIGURE -DHLAS_ENABLE_NET=${{ matrix.net }}
+          cmake --build build
+          cmake --install build --prefix "$pkg"
+
+      - name: Packa
+        run: |
+          pkg="HLas-${TAG}-windows-mingw-x64${{ matrix.suffix }}"
+          cp LICENSE THIRD_PARTY_NOTICES.md README.md README.sv.md "$pkg/"
+          zip -qr "$pkg.zip" "$pkg"
+          echo "PKG=$pkg.zip" >> "$GITHUB_ENV"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          files: ${{ env.PKG }}
+
+  # Samma två varianter; -net länkar systemets libcurl (libcurl4-openssl-dev).
+  linux:
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - net: OFF
+            suffix: ''
+          - net: ON
+            suffix: '-net'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Verktyg
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libcurl4-openssl-dev
+
+      - name: Bygg
+        run: |
+          pkg="HLas-${TAG}-linux-x64${{ matrix.suffix }}"
+          cmake -S . -B build $CONFIGURE -DHLAS_ENABLE_NET=${{ matrix.net }}
+          cmake --build build
+          cmake --install build --prefix "$pkg"
+
+      - name: Packa
+        run: |
+          pkg="HLas-${TAG}-linux-x64${{ matrix.suffix }}"
+          cp LICENSE THIRD_PARTY_NOTICES.md README.md README.sv.md "$pkg/"
+          tar -czf "$pkg.tar.gz" "$pkg"
+          echo "PKG=$pkg.tar.gz" >> "$GITHUB_ENV"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          files: ${{ env.PKG }}

@@ -4,6 +4,21 @@ Avklarat arbete. Öppna punkter ligger i [TODO.md](../TODO.md).
 
 ## Nästa
 
+### Färdigbyggda bibliotek på varje release
+
+- `cmake --install` ger biblioteken, `HLas.h` och ett CMake-paket, så att
+  `find_package(HLas)` ger `HLas::HLas`, `HLas::core` och de andra modulerna.
+  `HLAS_INSTALL` styr reglerna och har samma förval som `HLAS_BUILD_TESTS`.
+- `HLas::HLas` finns också som alias i källbygget, så att FetchContent och
+  `find_package` länkas likadant.
+- `.github/workflows/release.yml` bygger paketet för Windows MSVC, Windows MinGW
+  och Linux GCC vid varje tagg och lägger det på releasen. MinGW och Linux finns
+  också som `-net`-paket med nätstödet; MSVC-paketet saknar det. Release-byggen.
+- `HLAS_ENABLE_NET=ON` är byggt och provat på Windows med MinGW (MSYS2, libcurl
+  8.22) — första gången `src/net/` kompilerats på Windows.
+
+## 1.1.5
+
 ### Licensgaten borttagen — biblioteket är MIT
 
 - `SetLicense()`, `HasValidLicense()`, `LicenseData` och `Status::NoLicense` är
@@ -24,8 +39,6 @@ Avklarat arbete. Öppna punkter ligger i [TODO.md](../TODO.md).
 - `HLAS_BUILD_TESTS` — tester, mätprogram och verktyg byggs bara när HLas är
   toppnivåprojektet.
 - MSVC:s C4805 i `point14.cpp` (en `bool` i en bitoperation) är rättad.
-
-## 1.1.5
 
 ### Octree byggt över filens utbredning i stället för kuben
 

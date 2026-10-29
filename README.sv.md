@@ -86,6 +86,37 @@ Flaggor:
 - `-DHLAS_BUILD_TESTS=OFF` — hoppa över tester, mätprogram och verktyg. Den är
   på när HLas byggs för sig själv och av när ett annat projekt drar in det med
   FetchContent eller `add_subdirectory`
+- `-DHLAS_INSTALL=OFF` — inga installationsregler. Samma förval som ovan
+
+### Använda HLas i ett projekt
+
+Ur källan, med FetchContent:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(HLas
+    GIT_REPOSITORY https://github.com/holmbom/HLas.git
+    GIT_TAG        main)   # eller en release-tagg, t.ex. vX.Y.Z
+FetchContent_MakeAvailable(HLas)
+
+target_link_libraries(myapp PRIVATE HLas::HLas)
+```
+
+Eller med de färdigbyggda biblioteken. Varje release har Release-bibliotek för
+Windows (MSVC och MinGW) och Linux (GCC), så biblioteket inte behöver kompileras
+i ditt projekt. Packa upp ett och peka CMake på det:
+
+```cmake
+find_package(HLas 1 CONFIG REQUIRED)   # -DCMAKE_PREFIX_PATH=sökväg/till/HLas-vX.Y.Z-…
+target_link_libraries(myapp PRIVATE HLas::HLas)
+```
+
+Välj paketet för din kompilator: statiska C++-bibliotek går inte att blanda
+mellan MSVC, MinGW och GCC. MinGW- och Linux-paketen finns också som
+`-net`-varianter med HTTP range requests; de kräver samma libcurl i ditt bygge
+(`mingw-w64-ucrt-x86_64-curl` i MSYS2, `libcurl4-openssl-dev` på Debian/Ubuntu).
+Alla paket är Release-byggen. Ett Debug-bygge av din app med MSVC, eller
+nätstöd med MSVC, kräver källan.
 
 ### Plattformar
 
@@ -99,10 +130,9 @@ körs också med `TMPDIR` pekande på en katalog med mellanslag och `äöåÅÖ`
 sökvägar är UTF-8 på alla plattformar, och på Windows är det vad
 `CreateFileW`/`_wfopen` finns där för.
 
-`-DHLAS_ENABLE_NET=ON` är **inte** bland de provade Windows-konfigurationerna:
-libcurl finns inte installerat på maskinen som verifierade resten, så
-`find_package(CURL REQUIRED)` faller redan i konfigureringen. Ett saknat
-beroende, inte ett känt fel — men `src/net/` har inte kompilerats med MSVC.
+`-DHLAS_ENABLE_NET=ON` är byggt och provat på Windows med MinGW (MSYS2 UCRT64,
+libcurl 8.22), men **inte** med MSVC: där finns inget libcurl att bygga mot, så
+`src/net/` har inte kompilerats med MSVC.
 
 macOS är **oprövat**. Källan bär inget Linux-specifikt, men ingen har byggt den
 på en Mac — det är ett antagande, inte en mätning.
@@ -363,7 +393,7 @@ källan packas upp som vanligt.
 `BuildSidecar()` bygger för vilken `.laz` som helst, COPC inräknad. Vill du inte
 cacha dina COPC-filer låter du bli att anropa den för dem.
 
-En enda header; länka mot biblioteksmålet `HLas`.
+En enda header; länka mot biblioteksmålet `HLas::HLas`.
 
 ## Prestanda
 

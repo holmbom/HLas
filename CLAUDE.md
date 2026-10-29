@@ -14,9 +14,18 @@ LAZ support is enabled by default. To disable:
 cmake -B build -G Ninja -DHLAS_ENABLE_LAZ=OFF
 ```
 
-`HLAS_BUILD_TESTS` styr tester, mätprogram och `tools/`. Den är på när HLas är
-toppnivåprojektet och av när det dras in med FetchContent eller
-`add_subdirectory`.
+`HLAS_BUILD_TESTS` styr tester, mätprogram och `tools/`, och `HLAS_INSTALL`
+installationsreglerna. Båda är på när HLas är toppnivåprojektet och av när det
+dras in med FetchContent eller `add_subdirectory`.
+
+`cmake --install` ger biblioteken, `HLas.h` och CMake-paketet
+(`lib/cmake/HLas`, mallen i [cmake/HLasConfig.cmake.in](cmake/HLasConfig.cmake.in)),
+så att `find_package(HLas)` ger målen `HLas::HLas`, `HLas::core` och så vidare —
+samma namn som aliasen i källbygget. Interna headers under `src/` installeras
+inte. [.github/workflows/release.yml](.github/workflows/release.yml) bygger det
+paketet för Windows MSVC, Windows MinGW och Linux GCC vid varje tagg `vX.Y.Z` och
+lägger det på releasen. MinGW och Linux byggs också som `-net`-paket med
+`HLAS_ENABLE_NET`; MSVC-paketet saknar nätstöd. Alla är Release-byggen.
 
 ## Run Tests
 ```bash
@@ -663,10 +672,9 @@ Det är den sökväg [src/core/path_utf8.h](src/core/path_utf8.h) finns för, oc
 prövades aldrig end-to-end innan 1.1.4:s Windows-rättelse. Körningen ska lämna
 **noll** filer kvar i katalogen — en kvarlämnad fil betyder att något håller den
 öppen, se `FILE_SHARE_DELETE` nedan.
-⚠️ **`HLAS_ENABLE_NET=ON` är inte provat på Windows** — libcurl finns inte
-installerat på maskinen som verifierade resten, och `find_package(CURL REQUIRED)`
-faller därför redan i konfigureringen. Det är ett saknat beroende och inte ett
-fel i koden, men det betyder att `src/net/` inte har kompilerats med MSVC.
+⚠️ **`HLAS_ENABLE_NET=ON` är provat på Windows med MinGW men inte med MSVC.**
+MSYS2 UCRT64 har libcurl (8.22), och där bygger och går sviten. För MSVC finns
+inget libcurl på maskinen, så `src/net/` har inte kompilerats med MSVC.
 
 
 Sex fällor som Windows har och Linux inte. Alla sex fällde 1.1.4:s första tagg,

@@ -35,13 +35,21 @@ else()
 endif()
 option(HLAS_BUILD_TESTS "Build tests, benchmarks and tools" ${hlas_top_level})
 
+# Installationsregler och find_package-konfiguration. Av som förval när ett annat
+# projekt drar in HLas, så att dess `cmake --install` inte får med våra filer.
+option(HLAS_INSTALL "Generate install rules and the HLas CMake package" ${hlas_top_level})
+
 find_package(Threads REQUIRED)
 
 add_subdirectory(src)
 
 # Paraply för den som vill ha allt — tester, verktyg och program länkar det här.
 # Den som bara vill läsa punkter kan länka HLas::core i stället.
+#
+# HLas::HLas är samma mål under det namn det installerade paketet ger, så att
+# FetchContent och find_package(HLas) länkas likadant.
 add_library(HLas INTERFACE)
+add_library(HLas::HLas ALIAS HLas)
 target_link_libraries(HLas INTERFACE HLas_core HLas_copc HLas_dem HLas_write HLas_manager)
 
 # Bara när flaggan är på. Annars skulle alla som länkar paraplyet dra in libcurl,
@@ -83,4 +91,47 @@ endfunction()
 if(HLAS_BUILD_TESTS)
     add_subdirectory(tests)
     add_subdirectory(tools)
+endif()
+
+# ---- Installation -----------------------------------------------------------
+#
+# Det installerade paketet bär biblioteken och den enda publika headern. De
+# interna headers under src/ installeras inte: allt API:t når går genom HLas.h.
+# Exportnamnen är modulernas, så målen heter HLas::core, HLas::manager och så
+# vidare även efter find_package — samma namn som aliasen i källbygget.
+if(HLAS_INSTALL)
+    include(GNUInstallDirs)
+    include(CMakePackageConfigHelpers)
+
+    set(hlas_install_targets HLas_core HLas_copc HLas_dem HLas_write HLas_manager)
+    if(HLAS_ENABLE_NET)
+        list(APPEND hlas_install_targets HLas_net)
+    endif()
+    foreach(t IN LISTS hlas_install_targets)
+        string(REPLACE "HLas_" "" export_name ${t})
+        set_target_properties(${t} PROPERTIES EXPORT_NAME ${export_name})
+    endforeach()
+
+    install(TARGETS ${hlas_install_targets} HLas
+        EXPORT HLasTargets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(FILES include/HLas.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+    install(EXPORT HLasTargets
+        NAMESPACE HLas::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/HLas)
+    configure_package_config_file(cmake/HLasConfig.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/HLasConfig.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/HLas)
+    # Inom samma major är API:t kompatibelt; en ny major får inte väljas tyst.
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/HLasConfigVersion.cmake
+        COMPATIBILITY SameMajorVersion)
+    install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/HLasConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/HLasConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/HLas)
 endif()

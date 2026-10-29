@@ -139,10 +139,10 @@ proxyfelet på en fil med fler än två klasser.
       `/proc` eller `MAP_POPULATE` — men ingen har byggt biblioteket på en Mac.
       Det är ett antagande, inte en mätning, och 1.1.4:s Windows-fynd är precis
       vad ett sådant antagande brukar dölja.
-- [ ] **`HLAS_ENABLE_NET=ON` är oprövat på Windows.** libcurl finns inte på
-      maskinen som verifierade 1.1.4:s Windows-rättelse, så `src/net/` har aldrig
-      kompilerats med MSVC. Ett saknat beroende, inte ett känt fel — men inte
-      heller ett prövat påstående.
+- [ ] **`HLAS_ENABLE_NET=ON` är oprövat med MSVC.** Med MinGW (MSYS2, libcurl
+      8.22) bygger det och sviten går, men för MSVC finns inget libcurl på
+      maskinen, så `src/net/` har aldrig kompilerats med MSVC — och releasen har
+      därför inget `-net`-paket för MSVC.
 - [ ] **Ingen CI.** Fyra av 1.1.4:s fem Windows-fel hade fångats av ett bygge per
       plattform. De hittades i stället för att någon råkade öppna repot på en
       annan maskin, efter att taggen redan var pushad.
