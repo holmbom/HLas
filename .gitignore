@@ -1,0 +1,25 @@
+build/
+# Alla byggkataloger, inte bara "build" — verifiering mot flera konfigurationer
+# skapar build-laz-off/, build-net/ och liknande, och de ska aldrig kunna slinka
+# med i en commit.
+build*/
+out/
+.vs/
+.vscode/
+CMakeUserPresets.json
+*.exe
+*.dll
+*.lib
+*.a
+*.so
+*.dylib
+*.obj
+*.o
+# doc/ är spårad. Planer och changelog hör till repot — en plan vars mätningar
+# tog timmar att ta fram får inte ligga bara på en maskin.
+.claude/
+las/
+Test/
+RES.md
+CMakeFiles/
+CMakeCache.txt
